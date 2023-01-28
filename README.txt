@@ -1,9 +1,9 @@
-This program was tested and run on Java 17
+This program was tested and run using Java 17
 
 
-Working directory is the one that contains the *.java files
+Working directory is the one that contains the README.txt
 
-To compile: javac *.java -d .
+To compile: javac src/*.java -d classes
 
 
-To run: java java core.CheckersGame
+To run: java -cp classes core.CheckersGame
