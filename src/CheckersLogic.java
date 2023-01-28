@@ -91,15 +91,16 @@ public class CheckersLogic {
         
         greetings();
         choice = getPlayingChoice();
-        // System.exit(1);
 
         while (true) {
             updateView();
             
             if (!canPlayerCapture() && !canPlayerMove()) {
-                System.out.format("\nPlayer %c -- You can't make a move." +
+                System.out.format("\nPlayer %s -- You can't make a move." +
                     " Game over. Player %s wins.\n", turn.str(),
-                turn == Board.Direction.UP ? 'O' : 'X');
+                turn == Board.Direction.UP ?
+                        Board.Direction.DOWN.str() :
+                        Board.Direction.UP.str());
                 break;
             }
             
