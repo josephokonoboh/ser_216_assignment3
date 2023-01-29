@@ -2,8 +2,6 @@ package core;
 
 import java.awt.Point;
 import java.util.Scanner;
-    
-import java.util.ArrayList;
 
 /**
  * Defines the game logic of a Checkers game.
@@ -26,14 +24,12 @@ public class CheckersLogic {
     private Board board;
     private Board.Direction turn;
     private ui.CheckersTextConsole view;
-    
+    private CheckersComputerPlayer cpu;
     private Scanner input;
 
     private int cr, cc, dr, dc;
 
-    private boolean moveLock = false;
-    
-    private ArrayList<String> cpuMoves;
+    private boolean mustCapture = false;
 
     /**
      * Creates a new checker's game. Must call {@link #start start} to 
@@ -46,7 +42,7 @@ public class CheckersLogic {
             Board.BOARD_SIZE);
         turn = Board.Direction.UP;
         input = new Scanner(System.in);
-        cpuMoves = new ArrayList<>();
+        cpu = new CheckersComputerPlayer(board, Board.Direction.UP);
     }
 
     private boolean canPlayerCapture() {
@@ -107,10 +103,11 @@ public class CheckersLogic {
             System.out.format("\nPlayer %s -- your turn. Enter your move: ",
                 turn.str());
             
-            move = (choice == 'C' && turn == Board.Direction.DOWN) ?
-                getComputerMove() : input.nextLine().strip();
+            move = (choice == 'C' && turn == cpu.getDirection()) ?
+                cpu.getMove(mustCapture, canPlayerCapture(), cr, cc) :
+                input.nextLine().strip();
                 
-            if (choice == 'C' && turn == Board.Direction.DOWN) {
+            if (choice == 'C' && turn == cpu.getDirection()) {
                 view.print(move + "\n");
             }
 
@@ -119,91 +116,7 @@ public class CheckersLogic {
                     "Please enter a valid move.\n");
             }
         }
-    }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    private String getComputerMove() {
-        cpuMoves.clear();
-        
-        if (moveLock) {
-            String move = getLeftCaptureMove(cr, cc);
-            if(!move.equals("")) cpuMoves.add(move);
-            
-            move = getRightCaptureMove(cr, cc);
-            if(!move.equals("")) cpuMoves.add(move);
-        } else if (canPlayerCapture()) {
-            populateCPUCaptureMoves();
-        } else {
-            populateCPURegularMoves();
-        }
-         
-        return cpuMoves.size() > 0 ? cpuMoves.get(0) : "";
-        /*return cpuMoves.size() > 0 ? cpuMoves.get(
-            (int) (Math.random() * cpuMoves.size())) : "";*/
-    }
-    
-
-    private void populateCPURegularMoves() {
-        String move;
-        for (int row = 0; row < Board.BOARD_SIZE; ++row) {
-            for (int col = 0; col < Board.BOARD_SIZE; ++col) {            
-                if(!board.isPositionEmpty(row, col) &&
-                    board.getDirection(row, col) == Board.Direction.DOWN) {
-                    
-                    move = getLeftMove(row, col);
-                    if (!move.equals("")) { cpuMoves.add(move); }
-                    
-                    move = getRightMove(row, col);
-                    if (!move.equals("")) { cpuMoves.add(move); }
-                }
-            }
-        }
-    }
-
-    private void populateCPUCaptureMoves() {
-        String move;
-        for (int row = 0; row < Board.BOARD_SIZE; ++row) {
-            for (int col = 0; col < Board.BOARD_SIZE; ++col) {            
-                if(!board.isPositionEmpty(row, col) &&
-                    board.getDirection(row, col) == Board.Direction.DOWN) {
-                    
-                    move = getLeftCaptureMove(row, col);
-                    if (!move.equals("")) { cpuMoves.add(move); }
-                    
-                    move = getRightCaptureMove(row, col);
-                    if (!move.equals("")) { cpuMoves.add(move); }
-                }
-            }
-        }
-    }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    }    
 
     private void changePlayerTurn() {
         turn = turn == Board.Direction.UP ?
@@ -232,79 +145,6 @@ public class CheckersLogic {
             return new Point(cr + turn.s_dy(), cc + 1);
         }
     }
-    
-    
-     /**
-     * Gets a possible left noncapturing move for a pawn.
-     *
-     * @param row   The row of the pawn
-     * @param col   The col of the pawn
-     *
-     * @return      <code>move</code> if the pawn at (row, col) can make a
-     *              non-capture left move; <code>""</code> otherwise;
-     */
-    private String getLeftMove(int row, int col) {
-        if(!board.isPositionEmpty(row, col)) {            
-            int dy = board.getDirection(row, col).s_dy();
-
-            return board.isPositionEmpty(row + dy, col - dy) ?
-                String.format("%c%d-%c%d", col + 'a', row + 1,
-                col - dy + 'a', row + dy + 1) : "";
-        }
-
-        return "";
-    }
-    
-    private String getLeftCaptureMove(int row, int col) {
-        if(!board.isPositionEmpty(row, col)) {            
-            int b_dy = board.getDirection(row, col).b_dy();           
-            int s_dy = board.getDirection(row, col).s_dy();
-
-            return board.isPositionEmpty(row + b_dy, col - b_dy) &&
-                !board.isPositionEmpty(row + s_dy, col - s_dy) &&
-                (board.getDirection(row + s_dy, col - s_dy) != turn) ?
-                String.format("%c%d-%c%d", col + 'a', row + 1,
-                col - b_dy + 'a', row + b_dy + 1) : "";
-        }
-
-        return "";
-    }
-    
-    private String getRightCaptureMove(int row, int col) {
-        if(!board.isPositionEmpty(row, col)) {            
-            int b_dy = board.getDirection(row, col).b_dy();           
-            int s_dy = board.getDirection(row, col).s_dy();
-
-            return board.isPositionEmpty(row + b_dy, col + b_dy) &&
-                !board.isPositionEmpty(row + s_dy, col + s_dy) &&
-                (board.getDirection(row + s_dy, col + s_dy) != turn) ?
-                String.format("%c%d-%c%d", col + 'a', row + 1,
-                col + b_dy + 'a', row + b_dy + 1) : "";
-        }
-
-        return "";
-    }
-    
-    /**
-     * Gets a possible right noncapturing move for a pawn.
-     *
-     * @param row   The row of the pawn
-     * @param col   The col of the pawn
-     *
-     * @return      <code>"xx-xx"</code> if the pawn at (row, col) can make a
-     *              non-capture right move; <code>""</code> otherwise;
-     */
-    private String getRightMove(int row, int col) {
-        if(!board.isPositionEmpty(row, col)) {            
-            int dy = board.getDirection(row, col).s_dy();
-
-            return board.isPositionEmpty(row + dy, col + dy) ?
-                String.format("%c%d-%c%d", col + 'a', row + 1,
-                col + dy + 'a', row + dy + 1) : "";
-        }
-
-        return "";
-    }    
     
     private char getPlayingChoice() {
         String choice = input.nextLine().strip();
@@ -341,7 +181,7 @@ public class CheckersLogic {
             return false;
         }
 
-        if(moveLock) {
+        if(mustCapture) {
             if(move.charAt(1) - 49 != cr || move.charAt(0) - 97 != cc) {
                 return false;
             }
@@ -375,14 +215,14 @@ public class CheckersLogic {
                 board.removePawn(captee.x, captee.y);
 
                 if(board.canCapture(dr, dc)) {
-                    moveLock = true;
+                    mustCapture = true;
                     cr = dr;
                     cc = dc;
                     System.out.format("\nPlayer %s -- it's still your turn." +
                         " Continue capturing with pawn at %c%d: \n",
                         turn.str(), cc + 97, cr + 1);
                 } else {
-                    moveLock = false;
+                    mustCapture = false;
                     changePlayerTurn();
                 }
             } else {
