@@ -18,23 +18,25 @@ import java.util.Scanner;
  *  <li>A player loses when none of their pawns can make a move</li>
  * </ul> 
  * @author  Joseph Okonoboh
- * @version 1.0
+ * @version 1.1
  */
 public class CheckersLogic {
-    private Board board;
-    private Board.Direction turn;
-    private ui.CheckersTextConsole view;
-    private CheckersComputerPlayer cpu;
-    private Scanner input;
+    private Board board;                    // The Checkers board
+    private Board.Direction turn;           // The direction of current player
+    private ui.CheckersTextConsole view;    // The player's view of the board
+    private CheckersComputerPlayer cpu;     // The computer player
+    private Scanner input;                  // The input stream
 
+    // c* - current, d* - destination, *r - row, *c - column
+    // e.g. cr - current row
     private int cr, cc, dr, dc;
 
+    // Indicates if a pawn should continue capturing
     private boolean mustCapture = false;
 
     /**
-     * Creates a new checker's game. Must call {@link #start start} to 
-     * commence the game.
-     *
+     * Creates a new checker's game. Must call {@link #start start}
+     * to commence the game.
      */
     public CheckersLogic() {
         board = new Board();
@@ -42,15 +44,22 @@ public class CheckersLogic {
             Board.BOARD_SIZE);
         turn = Board.Direction.UP;
         input = new Scanner(System.in);
-        cpu = new CheckersComputerPlayer(board, Board.Direction.UP);
+        cpu = new CheckersComputerPlayer(board, Board.Direction.DOWN);
     }
 
+    /**
+     * Checks if the current player can make a capturing move
+     *
+     * @return      <code>true/<code> if at least one of the pawns of the
+     *              current player can capture an opponent's pawn;
+     *              <code>false</code> otherwise;
+     */
     private boolean canPlayerCapture() {
         for (int row = 0; row < Board.BOARD_SIZE; ++row) {
             for (int col = 0; col < Board.BOARD_SIZE; ++col) {
-                if(!board.isPositionEmpty(row, col) &&
+                if (!board.isPositionEmpty(row, col) &&
                     board.getDirection(row, col) == turn) {
-                    if(board.canCapture(row, col)) {
+                    if (board.canCapture(row, col)) {
                         return true;
                     }
                 }
@@ -60,12 +69,19 @@ public class CheckersLogic {
         return false;
     }
 
+    /**
+     * Checks if the current player can move.
+     *
+     * @return      <code>true/<code> if at least one of the pawns of the
+     *              current player can make a non-capturing move;
+     *              <code>false</code> otherwise;
+     */
     private boolean canPlayerMove() {
         for (int row = 0; row < Board.BOARD_SIZE; ++row) {
             for (int col = 0; col < Board.BOARD_SIZE; ++col) {
-                if(!board.isPositionEmpty(row, col) &&
+                if (!board.isPositionEmpty(row, col) &&
                     board.getDirection(row, col) == turn) {
-                    if(board.canMove(row, col)) {
+                    if (board.canMove(row, col)) {
                         return true;
                     }
                 }
@@ -87,21 +103,37 @@ public class CheckersLogic {
         
         greetings();
         choice = getPlayingChoice();
+        
+        updateView();
+        view.print("\nExample: to move pawn from a3 to b4, enter a3-b4\n");
+        view.print("\nPress Enter to begin game...");
+        input.nextLine();
+        
 
         while (true) {
             updateView();
             
             if (!canPlayerCapture() && !canPlayerMove()) {
-                System.out.format("\nPlayer %s -- You can't make a move." +
-                    " Game over. Player %s wins.\n", turn.str(),
-                turn == Board.Direction.UP ?
-                        Board.Direction.DOWN.str() :
-                        Board.Direction.UP.str());
+                changePlayerTurn();
+                String cpuStr = getCPUStr(choice);
+                changePlayerTurn();
+                
+                view.print("\nPlayer %s%s -- You can't make a move." +
+                    " Game over. Player %s%s wins.\n", turn.str(),
+                    getCPUStr(choice), turn == Board.Direction.UP ?
+                    Board.Direction.DOWN.str() :
+                    Board.Direction.UP.str(), cpuStr);
                 break;
             }
             
-            System.out.format("\nPlayer %s -- your turn. Enter your move: ",
-                turn.str());
+            if(!mustCapture) {
+                view.print("\nPlayer %s%s -- your turn. Enter your move: ",
+                    turn.str(), getCPUStr(choice));
+            } else {
+                view.print("\nPlayer %s%s -- it's still your turn." +
+                    " Continue capturing with pawn at %c%d.\nEnter your move: ",
+                    turn.str(), getCPUStr(choice), cc + 'a', cr + 1);
+            }
             
             move = (choice == 'C' && turn == cpu.getDirection()) ?
                 cpu.getMove(mustCapture, canPlayerCapture(), cr, cc) :
@@ -112,24 +144,29 @@ public class CheckersLogic {
             }
 
             if (!validateMove(move)) {
-                System.err.println("\nYour move was invalid. " +
-                    "Please enter a valid move.\n");
+                view.print("\nYour move was invalid. " + (mustCapture ?
+                    "".format("Continue capturing with pawn at %c%d\n",
+                    cc + 'a', cr + 1) :"Please enter a valid move.\n"));
             }
         }
     }    
 
+    /**
+     * Changes to the next player after current player is done
+     * with his/her move(s).
+     */
     private void changePlayerTurn() {
         turn = turn == Board.Direction.UP ?
             Board.Direction.DOWN : Board.Direction.UP;
     }
 
-    private Point getCaptee(int cr, int cc, int dr, int dc) {
-        if(dr - cr != turn.b_dy()) {
+    private Point getCaptee(int cr, int cc, int dr, int dc) {        
+        if (dr - cr != turn.b_dy()) {
             return null;
         }
 
-        if(dc < cc) {
-            if(dc - cc != -2 ||
+        if (dc < cc) {
+            if(cc - dc != Math.abs(turn.b_dy()) ||
                 board.isPositionEmpty(cr + turn.s_dy(), cc - 1) ||
                 board.getDirection(cr + turn.s_dy(), cc - 1) == turn) 
                 return null;
@@ -137,7 +174,7 @@ public class CheckersLogic {
 
             return new Point(cr + turn.s_dy(), cc - 1);
         } else {
-            if(dc - cc != 2 ||
+            if (dc - cc != Math.abs(turn.b_dy()) ||
                 board.isPositionEmpty(cr + turn.s_dy(), cc + 1) ||
                 board.getDirection(cr + turn.s_dy(), cc + 1) == turn)
                 return null;
@@ -146,13 +183,17 @@ public class CheckersLogic {
         }
     }
     
+    private String getCPUStr(char choice) {
+        return (choice == 'C' && turn == cpu.getDirection()) ? " (CPU)" : "";
+    }
+    
     private char getPlayingChoice() {
         String choice = input.nextLine().strip();
         
-        while(!choice.equals("C") && !choice.equals("P")) {
+        while (!choice.equals("C") && !choice.equals("P")) {
             view.print("\nWrong option. Please enter C to play against " +
                        "\nComputer or P to play against another human: ");
-            choice = input.nextLine();
+            choice = input.nextLine().strip();
         }
         
         return choice.charAt(0);
@@ -173,60 +214,57 @@ public class CheckersLogic {
             return false;
         }
 
-        if(move.charAt(0) < 'a' || move.charAt(0) > 'h' || 
-           move.charAt(3) < 'a' || move.charAt(3) > 'h' ||
-           move.charAt(1) < '0' || move.charAt(1) > '9' || 
-           move.charAt(4) < '0' || move.charAt(4) > '9' ||
-           move.charAt(2) != '-')  {
+        if (move.charAt(0) < 'a' || move.charAt(0) > 'h' || 
+            move.charAt(3) < 'a' || move.charAt(3) > 'h' ||
+            move.charAt(1) < '0' || move.charAt(1) > '9' || 
+            move.charAt(4) < '0' || move.charAt(4) > '9' ||
+            move.charAt(2) != '-')  {
             return false;
         }
 
-        if(mustCapture) {
-            if(move.charAt(1) - 49 != cr || move.charAt(0) - 97 != cc) {
+        if (mustCapture) {
+            if(move.charAt(1) - '1' != cr || move.charAt(0) - 'a' != cc) {
                 return false;
             }
         }
 
-        cr = move.charAt(1) - 49;
-        cc = move.charAt(0) - 97;
-        dr = move.charAt(4) - 49;
-        dc = move.charAt(3) - 97;
+        cr = move.charAt(1) - '1';
+        cc = move.charAt(0) - 'a';
+        dr = move.charAt(4) - '1';
+        dc = move.charAt(3) - 'a';
 
-        if(board.isPositionEmpty(cr, cc) ||
-           board.getDirection(cr, cc) != turn ||
-           !board.isPositionEmpty(dr, dc)) {
+        if (board.isPositionEmpty(cr, cc) ||
+            board.getDirection(cr, cc) != turn ||
+            !board.isPositionEmpty(dr, dc)) {
             return false;
         }
 
-        if(!canPlayerCapture()) {
+        if (!canPlayerCapture()) {
             // check regular move
-            if(turn.s_dy() + cr != dr || Math.abs(cc - dc) != 1) {
+            if (turn.s_dy() + cr != dr ||
+                Math.abs(cc - dc) != Math.abs(turn.s_dy())) {
                 return false;
             }
 
-            // make regular move
-            
+            // make regular move            
             board.makeMove(cr, cc, dr, dc);
             changePlayerTurn();
         } else {
             Point captee = getCaptee(cr, cc, dr, dc);
-            if(captee != null) {
+            if (captee != null) {
                 board.makeMove(cr, cc, dr, dc);
                 board.removePawn(captee.x, captee.y);
 
-                if(board.canCapture(dr, dc)) {
+                if (board.canCapture(dr, dc)) {
                     mustCapture = true;
                     cr = dr;
                     cc = dc;
-                    System.out.format("\nPlayer %s -- it's still your turn." +
-                        " Continue capturing with pawn at %c%d: \n",
-                        turn.str(), cc + 97, cr + 1);
                 } else {
                     mustCapture = false;
                     changePlayerTurn();
                 }
             } else {
-                System.err.println("\nYou have to capture your " +
+                view.print("\nYou have to capture your " +
                     "opponent's piece.\n");
                 return false;
             }

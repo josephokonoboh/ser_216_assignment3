@@ -45,7 +45,14 @@ public class CheckersTextConsole {
         stream.println();
     }
     
-    public void print(String string) {
-        stream.print(string);
+    /**
+     * Prints message to the stream
+     *
+     * @param message   The string to be printed to stream. Can contain the
+     *                  standard {@link String#format format specifiers}.
+     * @param obj      The values of the specifiers in message
+     */
+    public void print(String message, Object... obj) {
+        stream.format(message, obj);
     }
 }
