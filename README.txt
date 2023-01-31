@@ -8,7 +8,8 @@ To compile:
 
 
 To run:
-    java -cp classes core.CheckersGame
-
-To generate javadoc:
+    java -cp classes core.CheckersGame    
+    
+JavaDoc documentation is already in the docs folder. However, it can be
+regenerated using the command below:
     javadoc -d docs/ src/core/Board.java src/core/CheckersComputerPlayer.java src/core/CheckersLogic.java src/core/package-info.java src/ui/*.java
